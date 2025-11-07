@@ -104,7 +104,7 @@ class ShutdownTimerApp(ctk.CTk):
         # ===== Footer =====
         hint_label = ctk.CTkLabel(
             self,
-            text="Hinweis: Bei Berechtigungsproblemen als Administrator starten.",
+            text="Hinweis: Bei Berechtigungsproblemen als Administrator starten. Wenig schlafen ist ungesund!",
             font=("Segoe UI", 10),
         )
         hint_label.pack(pady=(0, 8))
