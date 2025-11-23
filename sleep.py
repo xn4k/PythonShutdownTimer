@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import customtkinter as ctk
+from datetime import datetime, timedelta  # <— NEU
 
 
 # --- Windows shutdown helpers ---
@@ -31,7 +32,7 @@ class ShutdownTimerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Shutdown Timer")
-        self.geometry("480x360")
+        self.geometry("480x460")  # etwas höher wegen Schlafrechner
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("dark-blue")
 
@@ -96,20 +97,54 @@ class ShutdownTimerApp(ctk.CTk):
 
         # Progressbar im Container (sauberes Layout)
         self.progress_container = ctk.CTkFrame(self)
-        self.progress_container.pack(pady=(4, 8), padx=40, fill="x")
+        self.progress_container.pack(pady=(4, 4), padx=40, fill="x")
         self.progress = ctk.CTkProgressBar(self.progress_container, mode="determinate")
         self.progress.pack(fill="x")
         self.progress.set(0.0)
 
+        # ===== Mini-Schlafrechner (NEU) =====
+        self.sleep_frame = ctk.CTkFrame(self)
+        self.sleep_frame.pack(pady=(4, 8), padx=12, fill="x")
+
+        sleep_title = ctk.CTkLabel(
+            self.sleep_frame, text="Mini-Schlafrechner", font=("Segoe UI", 14, "bold")
+        )
+        sleep_title.grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(8, 4))
+
+        wake_label = ctk.CTkLabel(self.sleep_frame, text="Weckerzeit (HH:MM):")
+        wake_label.grid(row=1, column=0, padx=(8, 4), pady=4, sticky="w")
+
+        self.wakeup_entry = ctk.CTkEntry(self.sleep_frame, placeholder_text="z. B. 06:30")
+        self.wakeup_entry.grid(row=1, column=1, padx=(4, 8), pady=4, sticky="we")
+
+        self.sleep_button = ctk.CTkButton(
+            self.sleep_frame, text="Restschlaf berechnen", command=self.on_calc_sleep
+        )
+        self.sleep_button.grid(row=2, column=0, columnspan=2, padx=8, pady=6, sticky="we")
+
+        self.sleep_result_label = ctk.CTkLabel(
+            self.sleep_frame,
+            text="",
+            wraplength=420,
+            font=("Segoe UI", 11),
+            justify="left",
+        )
+        self.sleep_result_label.grid(row=3, column=0, columnspan=2, padx=8, pady=(2, 8), sticky="w")
+
+        self.sleep_frame.grid_columnconfigure(1, weight=1)
+
         # ===== Footer =====
         hint_label = ctk.CTkLabel(
             self,
-            text="Hinweis: Bei Berechtigungsproblemen als Administrator starten. Wenig schlafen ist ungesund!",
+            text=(
+                "Hinweis: Bei Berechtigungsproblemen als Administrator starten. "
+                "Wenig schlafen ist ungesund!"
+            ),
             font=("Segoe UI", 10),
         )
         hint_label.pack(pady=(0, 8))
 
-        # Enter startet
+        # Enter startet Shutdown-Timer
         self.bind("<Return>", lambda _e: self.on_start())
 
     # ===== Theme Toggle =====
@@ -118,7 +153,7 @@ class ShutdownTimerApp(ctk.CTk):
         ctk.set_appearance_mode(new_mode)
         self.theme_switch.configure(text="Dark Mode" if new_mode == "dark" else "Light Mode")
 
-    # ===== App-Logik =====
+    # ===== App-Logik Shutdown =====
     def on_start(self):
         if self.countdown_running:
             return
@@ -196,6 +231,42 @@ class ShutdownTimerApp(ctk.CTk):
 
         self.remaining_seconds -= 1
         self.countdown_job = self.after(1000, self.update_countdown)
+
+    # ===== Mini-Schlafrechner-Logik =====
+    def on_calc_sleep(self):
+        time_str = self.wakeup_entry.get().strip()
+        if not time_str:
+            self.sleep_result_label.configure(text="Bitte eine Weckerzeit im Format HH:MM eingeben.")
+            return
+
+        try:
+            now = datetime.now()
+            t = datetime.strptime(time_str, "%H:%M")
+            wake = now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
+
+            # Falls die Zeit heute schon vorbei ist → auf morgen schieben
+            if wake <= now:
+                wake += timedelta(days=1)
+
+            diff = wake - now
+            total_minutes = int(diff.total_seconds() // 60)
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+
+            bed_8 = (wake - timedelta(hours=8)).strftime("%H:%M")
+            bed_9 = (wake - timedelta(hours=9)).strftime("%H:%M")
+
+            text = (
+                f"Wenn du JETZT schlafen gehst, bekommst du ca. {hours}h {minutes}min Schlaf "
+                f"bis {wake.strftime('%H:%M')}.\n"
+                f"Für ~8h Schlaf: spätestens um {bed_8} ins Bett.\n"
+                f"Für ~9h Schlaf: spätestens um {bed_9} ins Bett."
+            )
+            self.sleep_result_label.configure(text=text)
+        except ValueError:
+            self.sleep_result_label.configure(
+                text="Zeit konnte nicht gelesen werden. Bitte HH:MM verwenden, z. B. 06:30."
+            )
 
     # ===== Helpers =====
     def _reset_ui(self):
