@@ -1,5 +1,8 @@
 # ⚡ Shutdown Timer (Windows, Python + CustomTkinter)
 
+<img width="641" height="772" alt="image" src="https://github.com/user-attachments/assets/3bc26b3d-7545-4b3f-9d76-1ac512d1a339" />
+
+
 A sleek desktop app that schedules a Windows shutdown in X minutes, displays a live countdown, and allows you to cancel it anytime.  
 Built with [CustomTkinter].
 
